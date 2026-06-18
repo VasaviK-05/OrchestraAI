@@ -9,40 +9,23 @@ OrchestraAI bridges the gap between hardware-constrained environments and demand
 ## 🏗️ Architectural Overview
 
 OrchestraAI decouples ingestion, orchestration, and compute layers to ensure maximum uptime, low dispatch tail latency, and complete fault tolerance.
-[ CLIENT REQUESTS ]
-                                │
-                                ▼
-┌───────────────────────────────────────────────────────────────────────┐
-│                     1. INGESTION GATEWAY (FastAPI)                    │
-│  - Receives unstructured requests over HTTP/REST                      │
-│  - Parses Payload, Validates Schemas, Allocates Priority Tiers        │
-└───────────────────────────────────┬───────────────────────────────────┘
-│
-▼
-┌───────────────────────────────────────────────────────────────────────┐
-│                2. CENTRAL ORCHESTRATION ENGINE (Redis)                │
-│  - Thread-Safe Priority Queues (Urgent / Standard / Batch)            │
-│  - Distributed Hash Maps for Worker Node Heartbeats & Resource State  │
-└───────────────────────────────────┬───────────────────────────────────┘
-│
-┌───────────────────────┴───────────────────────┐
-▼ (Worker Thread Alpha)                         ▼ (Worker Thread Beta)
-┌──────────────────────────────────────┐        ┌──────────────────────────────────────┐
-│     3. CONCURRENT WORKER NODE        │        │     3. CONCURRENT WORKER NODE        │
-│  - Thread Pool Executor Worker       │        │  - Thread Pool Executor Worker       │
-│  - Local Synchronization Locks       │        │  - Local Synchronization Locks       │
-│  - Quantized ONNX Inference Engine   │        │  - Quantized ONNX Inference Engine   │
-└───────────────────┬──────────────────┘        └───────────────────┬──────────────────┘
-│                                               │
-└───────────────────────┬───────────────────────┘
-│ (Shared State Stream)
-▼
-┌───────────────────────────────────────────────────────────────────────┐
-│               4. TELEMETRY & FAULT MONITORING DAEMON                  │
-│  - Heartbeat Checker: Re-queues tasks if a thread terminates abruptly  │
-│  - Real-Time Profiler: Captures p99 latency and CPU utilization       │
-└───────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
 
+    A[Client Requests]
+
+    A --> B[Ingestion Gateway<br/>FastAPI]
+
+    B --> C[Central Orchestration Engine<br/>Redis Priority Queue]
+
+    C --> D[Worker Node Alpha]
+    C --> E[Worker Node Beta]
+
+    D --> F[Telemetry & Monitoring]
+    E --> F
+
+    F --> C
+```
 1. **Ingestion Gateway:** An asynchronous FastAPI web node parsing incoming inference contracts, validating structural properties, and injecting scheduling signatures.
 2. **Central Orchestration Engine:** A Redis-backed global state registry and min-heap sorting layer prioritizing jobs based on real-time SLA urgency thresholds.
 3. **Concurrent Worker Pools:** Multi-threaded computation runtimes execution context isolated via strict mutual exclusion (`mutex`) boundaries to execute compressed INT8 quantized AI models.

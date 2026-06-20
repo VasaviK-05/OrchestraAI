@@ -1,8 +1,13 @@
-from pydantic import BaseModel
-from typing import Dict, Any
+
+from pydantic import BaseModel, Field
 
 
 class JobRequest(BaseModel):
-    priority: int
+
+    priority: int = Field(
+        ge=1,
+        le=3
+    )
+
     model_type: str
-    payload: Dict[str, Any]
+    payload: dict
